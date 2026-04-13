@@ -1,5 +1,10 @@
 const express = require('express');
-const bcrypt = require('bcrypt');
+// Au début du fichier, remplacer :
+// const bcrypt = require('bcrypt');
+// par :
+const bcrypt = require('bcryptjs');
+
+// Le reste du code reste identique car l'API est compatible
 const jwt = require('jsonwebtoken');
 const pool = require('../db/pool');
 
