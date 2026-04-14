@@ -7,19 +7,8 @@ const pool = require('./db/pool');
 
 const app = express();
 
-// 🔧 Ajoute cette ligne pour Render
+// 🔧 Configuration du proxy pour Render
 app.set('trust proxy', 1);
-
-// ... reste du code
-
-// Routes
-const authRoutes = require('./routes/auth');
-const moduleRoutes = require('./routes/modules');
-const exerciseRoutes = require('./routes/exercises');
-const challengeRoutes = require('./routes/challenges');
-const progressRoutes = require('./routes/progress');
-
-const app = express();
 
 // Sécurité
 app.use(helmet());
@@ -34,6 +23,12 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Routes
+const authRoutes = require('./routes/auth');
+const moduleRoutes = require('./routes/modules');
+const exerciseRoutes = require('./routes/exercises');
+const challengeRoutes = require('./routes/challenges');
+const progressRoutes = require('./routes/progress');
+
 app.use('/api/auth', authRoutes);
 app.use('/api/modules', moduleRoutes);
 app.use('/api/exercises', exerciseRoutes);
@@ -46,6 +41,7 @@ app.get('/api/health', async (req, res) => {
         await pool.query('SELECT 1');
         res.json({ status: 'OK', database: 'connected' });
     } catch (error) {
+        console.error('Health check error:', error);
         res.status(500).json({ status: 'ERROR', database: 'disconnected' });
     }
 });
