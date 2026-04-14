@@ -5,6 +5,13 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const pool = require('./db/pool');
 
+const app = express();
+
+// 🔧 Ajoute cette ligne pour Render
+app.set('trust proxy', 1);
+
+// ... reste du code
+
 // Routes
 const authRoutes = require('./routes/auth');
 const moduleRoutes = require('./routes/modules');
