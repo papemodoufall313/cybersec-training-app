@@ -1,22 +1,23 @@
--- Création de la base de données
-CREATE DATABASE IF NOT EXISTS cybersec_training;
+const { Pool } = require('pg');
+const fs = require('fs');
 
-\c cybersec_training;
+const pool = new Pool({
+    connectionString: 'postgresql://ddbitc_user:jlvr9oN1TQgQlXhAdKHznCs3vgUm1QwO@dpg-d7eigbv41pts73cml6sg-a.frankfurt-postgres.render.com/cybersec_training',
+    ssl: { rejectUnauthorized: false }
+});
 
--- Table des utilisateurs (avec colonnes Stripe)
-CREATE TABLE users (
+const sql = `
+-- Création des tables
+CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) DEFAULT 'student',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    subscription_status VARCHAR(20) DEFAULT 'inactive',
-    stripe_customer_id VARCHAR(100)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Table des modules
-CREATE TABLE modules (
+CREATE TABLE IF NOT EXISTS modules (
     id SERIAL PRIMARY KEY,
     title VARCHAR(100) NOT NULL,
     description TEXT,
@@ -24,8 +25,7 @@ CREATE TABLE modules (
     order_position INT NOT NULL
 );
 
--- Table des exercices
-CREATE TABLE exercises (
+CREATE TABLE IF NOT EXISTS exercises (
     id SERIAL PRIMARY KEY,
     module_id INT REFERENCES modules(id) ON DELETE CASCADE,
     title VARCHAR(100) NOT NULL,
@@ -36,21 +36,17 @@ CREATE TABLE exercises (
     order_position INT NOT NULL
 );
 
--- Table des challenges CTF
-CREATE TABLE challenges (
+CREATE TABLE IF NOT EXISTS challenges (
     id SERIAL PRIMARY KEY,
     title VARCHAR(100) NOT NULL,
     description TEXT,
     category VARCHAR(50),
     difficulty INT CHECK (difficulty BETWEEN 1 AND 5),
     flag VARCHAR(255) NOT NULL,
-    points INT DEFAULT 100,
-    docker_image VARCHAR(100),
-    docker_port INT
+    points INT DEFAULT 100
 );
 
--- Table de progression
-CREATE TABLE user_progress (
+CREATE TABLE IF NOT EXISTS user_progress (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(id) ON DELETE CASCADE,
     exercise_id INT REFERENCES exercises(id) ON DELETE CASCADE,
@@ -59,14 +55,16 @@ CREATE TABLE user_progress (
     UNIQUE(user_id, exercise_id)
 );
 
--- Table des flags validés
-CREATE TABLE user_flags (
+CREATE TABLE IF NOT EXISTS user_flags (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(id) ON DELETE CASCADE,
     challenge_id INT REFERENCES challenges(id) ON DELETE CASCADE,
     validated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, challenge_id)
 );
+
+-- Supprimer les anciennes données
+TRUNCATE TABLE user_flags, user_progress, exercises, challenges, modules, users RESTART IDENTITY CASCADE;
 
 -- Insertion des modules
 INSERT INTO modules (title, description, duration_hours, order_position) VALUES
@@ -86,8 +84,26 @@ INSERT INTO exercises (module_id, title, description, instructions, command_exam
 (3, 'Chiffrement AES avec OpenSSL', 'Chiffrer/déchiffrer un fichier', 'Utiliser openssl pour chiffrer secret.txt', 'openssl enc -aes-256-cbc -in secret.txt -out secret.enc', 'Fichier chiffré créé', 1);
 
 -- Insertion des challenges
-INSERT INTO challenges (title, description, category, difficulty, flag, points, docker_image, docker_port) VALUES
-('SQL Injection basique', 'Contournez l''authentification sur login.php', 'web', 1, 'FLAG{sql_injection_ez}', 100, 'vulnerables/web-dvwa', 80),
-('Capture FTP', 'Analysez capture.pcap pour trouver le mot de passe FTP', 'network', 2, 'FLAG{ftp_1s_insecure}', 150, NULL, NULL),
-('MD5 Crack', 'Cassez le hash 5f4dcc3b5aa765d61d8327deb882cf99', 'crypto', 1, 'FLAG{md5_is_broken}', 100, NULL, NULL),
-('Reverse Engineering', 'Trouvez le mot de passe dans crackme.bin', 'binary', 3, 'FLAG{revers1ng_1s_fun}', 200, 'crackme/challenge', 1337);
+INSERT INTO challenges (title, description, category, difficulty, flag, points) VALUES
+('SQL Injection basique', 'Contournez l''authentification sur login.php', 'web', 1, 'FLAG{sql_injection_ez}', 100),
+('Capture FTP', 'Analysez capture.pcap pour trouver le mot de passe FTP', 'network', 2, 'FLAG{ftp_1s_insecure}', 150),
+('MD5 Crack', 'Cassez le hash 5f4dcc3b5aa765d61d8327deb882cf99', 'crypto', 1, 'FLAG{md5_is_broken}', 100),
+('Reverse Engineering', 'Trouvez le mot de passe dans crackme.bin', 'binary', 3, 'FLAG{revers1ng_1s_fun}', 200);
+`;
+
+async function setup() {
+    try {
+        await pool.query(sql);
+        console.log('✅ Tables créées avec succès');
+        
+        // Vérification
+        const res = await pool.query('SELECT title FROM modules');
+        console.log('📚 Modules:', res.rows.map(r => r.title));
+    } catch (err) {
+        console.error('❌ Erreur:', err.message);
+    } finally {
+        pool.end();
+    }
+}
+
+setup();

@@ -13,13 +13,17 @@ app.set('trust proxy', 1);
 // Sécurité
 app.use(helmet());
 app.use(cors());
+app.post('/api/webhook/stripe', express.raw({type: 'application/json'}), webhookRoutes);
 app.use(express.json());
-
+// Routes Stripe
+app.use('/api/payment', auth, paymentRoutes);
 // Rate limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100
 });
+// Le webhook Stripe a besoin du body brut
+
 app.use('/api/', limiter);
 
 // Routes
@@ -28,12 +32,17 @@ const moduleRoutes = require('./routes/modules');
 const exerciseRoutes = require('./routes/exercises');
 const challengeRoutes = require('./routes/challenges');
 const progressRoutes = require('./routes/progress');
-
+const paymentRoutes = require('./routes/payment');
+const webhookRoutes = require('./routes/webhook');
+const { requireSubscription } = require('./middleware/subscription');
 app.use('/api/auth', authRoutes);
-app.use('/api/modules', moduleRoutes);
-app.use('/api/exercises', exerciseRoutes);
-app.use('/api/challenges', challengeRoutes);
-app.use('/api/progress', progressRoutes);
+app.use('/api/payment', auth, paymentRoutes);
+app.post('/api/webhook/stripe', express.raw({type: 'application/json'}), webhookRoutes);
+// Routes protégées (nécessitent authentification + abonnement)
+app.use('/api/modules', auth, requireSubscription, moduleRoutes);
+app.use('/api/challenges', auth, requireSubscription, challengeRoutes);
+app.use('/api/exercises', auth, requireSubscription, exerciseRoutes);
+app.use('/api/progress', auth, requireSubscription, progressRoutes);
 
 // Test base de données
 app.get('/api/health', async (req, res) => {
