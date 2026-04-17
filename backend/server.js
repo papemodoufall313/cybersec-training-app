@@ -48,7 +48,8 @@ app.use('/api/challenges', authRoutes, challengeRoutes);
 app.use('/api/modules', authRoutes, requireSubscription, moduleRoutes);
 app.use('/api/exercises', authRoutes, requireSubscription, exerciseRoutes);
 app.use('/api/progress', authRoutes, requireSubscription, progressRoutes);
-
+// Après (authentification seulement)
+app.use('/api/modules', authRoutes, moduleRoutes);
 // Health check (public)
 app.get('/api/health', async (req, res) => {
     try {
